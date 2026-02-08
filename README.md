@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SBGamers - PC Part Aggregator for MENA
 
-## Getting Started
+A professional-grade PC Part Aggregator, Compatibility Checker, and Price Tracker for Saudi Arabia and UAE.
 
-First, run the development server:
+## Features
+
+- **PC Builder** - Build your dream PC with real-time compatibility checking
+- **Price Comparison** - Compare prices across 5+ MENA retailers
+- **Price History** - Track price trends with interactive charts
+- **Smart Alerts** - Get notified when prices drop (email-based)
+- **Product Comparison** - Compare up to 4 products side-by-side
+- **Bottleneck Calculator** - Check CPU/GPU balance
+
+## Product Categories
+
+- PC Components: CPUs, GPUs, Motherboards, RAM, Storage, PSUs, Cases, Coolers
+- Displays: Monitors, TVs
+- Peripherals: Keyboards, Mice, Headsets, Mousepads, Webcams, Microphones, Controllers
+- Gaming Consoles: PlayStation, Xbox, Nintendo Switch
+
+## Tech Stack
+
+- **Framework:** Next.js 14+ (App Router)
+- **Database:** PostgreSQL (Cranl.com)
+- **Styling:** Tailwind CSS + Framer Motion
+- **Charts:** Recharts
+- **Hosting:** Cranl.com
+
+## Deployment on Cranl
+
+1. Push this repo to GitHub
+2. Go to [Cranl Dashboard](https://app.cranl.com)
+3. Create a new project and connect your GitHub repo
+4. Create a PostgreSQL database
+5. Add environment variable:
+   ```
+   DATABASE_URL=postgresql://user:pass@host:5432/dbname
+   ```
+6. Run the SQL migrations from `supabase/migrations/` in your database
+7. Deploy!
+
+## Local Development
 
 ```bash
+# Install dependencies
+npm install
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Build for production
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+DATABASE_URL=postgresql://username:password@host:5432/database_name
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Database Setup
 
-## Learn More
+Run the SQL files in order:
+1. `supabase/migrations/001_initial_schema.sql` - Creates tables
+2. `supabase/migrations/002_seed_data.sql` - Adds sample data
 
-To learn more about Next.js, take a look at the following resources:
+## Retailers Supported
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Amazon SA
+- Amazon AE
+- Newegg
+- Jarir
+- Softland
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## License
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
