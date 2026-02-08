@@ -1,10 +1,20 @@
 import { Pool, QueryResult, QueryResultRow } from "pg";
 
-// PostgreSQL connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-});
+// Lazy pool initialization to prevent startup crashes
+let pool: Pool | null = null;
+
+const getPool = (): Pool => {
+  if (!pool && process.env.DATABASE_URL) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    });
+  }
+  if (!pool) {
+    throw new Error("Database not configured");
+  }
+  return pool;
+};
 
 // Helper to check if database is configured
 export const isDatabaseConfigured = (): boolean => {
@@ -16,7 +26,7 @@ export async function query<T extends QueryResultRow = any>(
   text: string,
   params?: any[]
 ): Promise<QueryResult<T>> {
-  const client = await pool.connect();
+  const client = await getPool().connect();
   try {
     const result = await client.query<T>(text, params);
     return result;
@@ -29,7 +39,7 @@ export async function query<T extends QueryResultRow = any>(
 export async function transaction<T>(
   callback: (client: any) => Promise<T>
 ): Promise<T> {
-  const client = await pool.connect();
+  const client = await getPool().connect();
   try {
     await client.query("BEGIN");
     const result = await callback(client);
@@ -180,5 +190,3 @@ export const alertQueries = {
     return query(sql, [email]);
   },
 };
-
-export default pool;
