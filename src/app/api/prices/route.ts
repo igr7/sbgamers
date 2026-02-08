@@ -34,15 +34,23 @@ export async function GET(request: NextRequest) {
   try {
     const result = await productQueries.getPriceHistory(productId, days);
 
+    // Fall back to demo if query failed
+    if (!result) {
+      return NextResponse.json({
+        data: demoPriceHistory,
+        source: "demo",
+      });
+    }
+
     return NextResponse.json({
       data: result.rows,
       source: "database",
     });
   } catch (error) {
     console.error("Database error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch price history" },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      data: demoPriceHistory,
+      source: "demo",
+    });
   }
 }

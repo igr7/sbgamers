@@ -1,55 +1,86 @@
 import { Pool, QueryResult, QueryResultRow } from "pg";
 
-// Lazy pool initialization to prevent startup crashes
+// Lazy pool initialization - only created when first query is made
 let pool: Pool | null = null;
 
-const getPool = (): Pool => {
-  if (!pool && process.env.DATABASE_URL) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-    });
+const getPool = (): Pool | null => {
+  if (!isDatabaseConfigured()) {
+    return null;
   }
   if (!pool) {
-    throw new Error("Database not configured");
+    try {
+      pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
+        connectionTimeoutMillis: 5000,
+        idleTimeoutMillis: 30000,
+        max: 10,
+      });
+    } catch (error) {
+      console.error("Failed to create database pool:", error);
+      return null;
+    }
   }
   return pool;
 };
 
 // Helper to check if database is configured
 export const isDatabaseConfigured = (): boolean => {
-  return Boolean(process.env.DATABASE_URL && process.env.DATABASE_URL !== "");
+  const url = process.env.DATABASE_URL;
+  return Boolean(url && url.length > 0 && url.startsWith("postgresql"));
 };
 
-// Query helper with error handling
+// Query helper with error handling - returns null if database not available
 export async function query<T extends QueryResultRow = any>(
   text: string,
   params?: any[]
-): Promise<QueryResult<T>> {
-  const client = await getPool().connect();
+): Promise<QueryResult<T> | null> {
+  const p = getPool();
+  if (!p) {
+    return null;
+  }
+
+  let client;
   try {
+    client = await p.connect();
     const result = await client.query<T>(text, params);
     return result;
+  } catch (error) {
+    console.error("Database query error:", error);
+    return null;
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 }
 
 // Transaction helper
 export async function transaction<T>(
   callback: (client: any) => Promise<T>
-): Promise<T> {
-  const client = await getPool().connect();
+): Promise<T | null> {
+  const p = getPool();
+  if (!p) {
+    return null;
+  }
+
+  let client;
   try {
+    client = await p.connect();
     await client.query("BEGIN");
     const result = await callback(client);
     await client.query("COMMIT");
     return result;
   } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
+    if (client) {
+      await client.query("ROLLBACK");
+    }
+    console.error("Database transaction error:", error);
+    return null;
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 }
 

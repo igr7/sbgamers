@@ -36,6 +36,23 @@ const demoProducts = [
   },
 ];
 
+function filterDemoProducts(filters: ProductFilters) {
+  let filtered = [...demoProducts];
+
+  if (filters.category) {
+    filtered = filtered.filter(p => p.category === filters.category);
+  }
+  if (filters.search) {
+    const search = filters.search.toLowerCase();
+    filtered = filtered.filter(p =>
+      p.name.toLowerCase().includes(search) ||
+      p.brand.toLowerCase().includes(search)
+    );
+  }
+
+  return filtered;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
 
@@ -51,20 +68,7 @@ export async function GET(request: NextRequest) {
 
   // Return demo data if database is not configured
   if (!isDatabaseConfigured()) {
-    let filtered = [...demoProducts];
-
-    if (filters.category) {
-      filtered = filtered.filter(p => p.category === filters.category);
-    }
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.name.toLowerCase().includes(search) ||
-        p.brand.toLowerCase().includes(search)
-      );
-    }
-
-    return NextResponse.json({ data: filtered, source: "demo" });
+    return NextResponse.json({ data: filterDemoProducts(filters), source: "demo" });
   }
 
   try {
@@ -74,9 +78,15 @@ export async function GET(request: NextRequest) {
       search: filters.search,
     });
 
+    // If database query failed, fall back to demo data
+    if (!result) {
+      return NextResponse.json({ data: filterDemoProducts(filters), source: "demo" });
+    }
+
     return NextResponse.json({ data: result.rows, source: "database" });
   } catch (error) {
     console.error("Database error:", error);
-    return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 });
+    // Fall back to demo data on error
+    return NextResponse.json({ data: filterDemoProducts(filters), source: "demo" });
   }
 }
