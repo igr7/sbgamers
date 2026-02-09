@@ -1,92 +1,229 @@
 import { NextRequest, NextResponse } from "next/server";
-import { productQueries, isDatabaseConfigured } from "@/lib/db";
-import { ProductFilters } from "@/types";
+import { query, isDatabaseConfigured } from "@/lib/db";
+import { DEMO_PRODUCTS } from "@/lib/demo-data";
 
-// Demo data for when database is not configured
-const demoProducts = [
-  {
-    id: "1", name: "AMD Ryzen 9 7950X", brand: "AMD", model: "7950X", category: "cpu",
-    image_url: null, specs: { cores: 16, threads: 32, socket: "AM5", tdp: 170 },
-    prices: [{ retailer: "amazon_sa", price: 2299, currency: "SAR", in_stock: true }],
-  },
-  {
-    id: "2", name: "NVIDIA RTX 4090", brand: "NVIDIA", model: "RTX 4090", category: "gpu",
-    image_url: null, specs: { vram: 24, cuda_cores: 16384, tdp: 450 },
-    prices: [{ retailer: "amazon_sa", price: 7499, currency: "SAR", in_stock: true }],
-  },
-  {
-    id: "3", name: "Samsung Odyssey G9", brand: "Samsung", model: "G9", category: "monitor",
-    image_url: null, specs: { screen_size: 49, refresh_rate: 240, resolution: "5120x1440" },
-    prices: [{ retailer: "jarir", price: 4999, currency: "SAR", in_stock: true }],
-  },
-  {
-    id: "4", name: "PlayStation 5", brand: "Sony", model: "PS5", category: "console",
-    image_url: null, specs: { console_storage: 825, max_resolution: "4K" },
-    prices: [{ retailer: "jarir", price: 2099, currency: "SAR", in_stock: true }],
-  },
-  {
-    id: "5", name: "Logitech G Pro X Superlight", brand: "Logitech", model: "GPX", category: "mouse",
-    image_url: null, specs: { dpi: 25600, weight: 63, wireless: true },
-    prices: [{ retailer: "amazon_sa", price: 549, currency: "SAR", in_stock: true }],
-  },
-  {
-    id: "6", name: "SteelSeries Arctis Nova Pro", brand: "SteelSeries", model: "Nova Pro", category: "headset",
-    image_url: null, specs: { driver_size: 40, wireless: true, noise_cancelling: true },
-    prices: [{ retailer: "amazon_sa", price: 1399, currency: "SAR", in_stock: true }],
-  },
-];
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-function filterDemoProducts(filters: ProductFilters) {
-  let filtered = [...demoProducts];
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const category = searchParams.get("category");
+  const retailer = searchParams.get("retailer");
+  const search = searchParams.get("search")?.toLowerCase();
+  const inStock = searchParams.get("inStock");
+  const limit = parseInt(searchParams.get("limit") || "50");
+  const offset = parseInt(searchParams.get("offset") || "0");
+  const sortBy = searchParams.get("sortBy") || "price_asc";
 
-  if (filters.category) {
-    filtered = filtered.filter(p => p.category === filters.category);
+  // Try database first
+  if (isDatabaseConfigured()) {
+    try {
+      const result = await getProductsFromDB(searchParams);
+      if (result) {
+        return NextResponse.json(result);
+      }
+    } catch (error) {
+      console.error("Database error, falling back to demo data:", error);
+    }
   }
-  if (filters.search) {
-    const search = filters.search.toLowerCase();
-    filtered = filtered.filter(p =>
+
+  // Fallback to demo data
+  let products = [...DEMO_PRODUCTS];
+
+  // Filter by category
+  if (category && category !== "all") {
+    products = products.filter(p => p.category === category);
+  }
+
+  // Filter by retailer
+  if (retailer && retailer !== "all") {
+    products = products.filter(p => p.prices.some(pr => pr.retailer === retailer));
+  }
+
+  // Filter by search
+  if (search) {
+    products = products.filter(p =>
       p.name.toLowerCase().includes(search) ||
-      p.brand.toLowerCase().includes(search)
+      p.brand.toLowerCase().includes(search) ||
+      p.model.toLowerCase().includes(search)
     );
   }
 
-  return filtered;
+  // Filter by stock
+  if (inStock === "true") {
+    products = products.filter(p => p.lowest_price?.in_stock);
+  }
+
+  // Sort
+  switch (sortBy) {
+    case "price_asc":
+      products.sort((a, b) => (a.lowest_price?.price || 0) - (b.lowest_price?.price || 0));
+      break;
+    case "price_desc":
+      products.sort((a, b) => (b.lowest_price?.price || 0) - (a.lowest_price?.price || 0));
+      break;
+    case "name":
+      products.sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    case "newest":
+      products.reverse(); // Demo data doesn't have dates
+      break;
+  }
+
+  // Pagination
+  const total = products.length;
+  products = products.slice(offset, offset + limit);
+
+  return NextResponse.json({
+    products,
+    pagination: {
+      total,
+      limit,
+      offset,
+      hasMore: offset + products.length < total,
+    },
+    source: "demo",
+  });
 }
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
+async function getProductsFromDB(searchParams: URLSearchParams) {
+  const category = searchParams.get("category");
+  const retailer = searchParams.get("retailer");
+  const search = searchParams.get("search");
+  const inStock = searchParams.get("inStock");
+  const limit = parseInt(searchParams.get("limit") || "50");
+  const offset = parseInt(searchParams.get("offset") || "0");
+  const sortBy = searchParams.get("sortBy") || "price_asc";
 
-  const filters: ProductFilters = {
-    category: searchParams.get("category") as ProductFilters["category"] || undefined,
-    brand: searchParams.get("brand") || undefined,
-    min_price: searchParams.get("min_price") ? Number(searchParams.get("min_price")) : undefined,
-    max_price: searchParams.get("max_price") ? Number(searchParams.get("max_price")) : undefined,
-    in_stock: searchParams.get("in_stock") === "true" ? true : undefined,
-    search: searchParams.get("search") || undefined,
-    sort_by: searchParams.get("sort_by") as ProductFilters["sort_by"] || undefined,
+  let sql = `
+    SELECT 
+      p.id,
+      p.name,
+      p.brand,
+      p.model,
+      p.category,
+      p.image_url,
+      p.specs,
+      p.created_at,
+      p.updated_at,
+      json_agg(
+        json_build_object(
+          'id', pr.id,
+          'retailer', pr.retailer,
+          'price', pr.price,
+          'original_price', pr.original_price,
+          'currency', pr.currency,
+          'url', pr.url,
+          'in_stock', pr.in_stock,
+          'last_checked', pr.last_checked
+        ) ORDER BY pr.price ASC
+      ) as prices,
+      MIN(CASE WHEN pr.in_stock THEN pr.price END) as lowest_price
+    FROM products p
+    LEFT JOIN prices pr ON p.id = pr.product_id
+    WHERE 1=1
+  `;
+
+  const params: any[] = [];
+  let paramIndex = 1;
+
+  if (category && category !== "all") {
+    sql += ` AND p.category = $${paramIndex}`;
+    params.push(category);
+    paramIndex++;
+  }
+
+  if (retailer && retailer !== "all") {
+    sql += ` AND pr.retailer = $${paramIndex}`;
+    params.push(retailer);
+    paramIndex++;
+  }
+
+  if (search) {
+    sql += ` AND (p.name ILIKE $${paramIndex} OR p.brand ILIKE $${paramIndex} OR p.model ILIKE $${paramIndex})`;
+    params.push(`%${search}%`);
+    paramIndex++;
+  }
+
+  if (inStock === "true") {
+    sql += ` AND pr.in_stock = true`;
+  }
+
+  sql += ` GROUP BY p.id`;
+
+  switch (sortBy) {
+    case "price_asc":
+      sql += ` ORDER BY lowest_price ASC NULLS LAST`;
+      break;
+    case "price_desc":
+      sql += ` ORDER BY lowest_price DESC NULLS LAST`;
+      break;
+    case "name":
+      sql += ` ORDER BY p.name ASC`;
+      break;
+    case "newest":
+      sql += ` ORDER BY p.created_at DESC`;
+      break;
+    default:
+      sql += ` ORDER BY lowest_price ASC NULLS LAST`;
+  }
+
+  sql += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  params.push(limit, offset);
+
+  const result = await query(sql, params);
+
+  if (!result || result.rows.length === 0) {
+    return null;
+  }
+
+  // Get total count
+  let countSql = `SELECT COUNT(DISTINCT p.id) as total FROM products p LEFT JOIN prices pr ON p.id = pr.product_id WHERE 1=1`;
+  const countParams: any[] = [];
+  let countParamIndex = 1;
+
+  if (category && category !== "all") {
+    countSql += ` AND p.category = $${countParamIndex}`;
+    countParams.push(category);
+    countParamIndex++;
+  }
+
+  if (retailer && retailer !== "all") {
+    countSql += ` AND pr.retailer = $${countParamIndex}`;
+    countParams.push(retailer);
+    countParamIndex++;
+  }
+
+  if (search) {
+    countSql += ` AND (p.name ILIKE $${countParamIndex} OR p.brand ILIKE $${countParamIndex})`;
+    countParams.push(`%${search}%`);
+  }
+
+  const countResult = await query(countSql, countParams);
+  const total = parseInt(countResult?.rows[0]?.total || "0");
+
+  const products = result.rows.map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    brand: row.brand,
+    model: row.model,
+    category: row.category,
+    image_url: row.image_url,
+    specs: row.specs || {},
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    prices: row.prices?.filter((p: any) => p.id !== null) || [],
+    lowest_price: row.prices?.find((p: any) => p.in_stock && p.price === row.lowest_price) || row.prices?.[0] || null,
+  }));
+
+  return {
+    products,
+    pagination: {
+      total,
+      limit,
+      offset,
+      hasMore: offset + products.length < total,
+    },
+    source: "database",
   };
-
-  // Return demo data if database is not configured
-  if (!isDatabaseConfigured()) {
-    return NextResponse.json({ data: filterDemoProducts(filters), source: "demo" });
-  }
-
-  try {
-    const result = await productQueries.getAll({
-      category: filters.category,
-      brand: filters.brand,
-      search: filters.search,
-    });
-
-    // If database query failed, fall back to demo data
-    if (!result) {
-      return NextResponse.json({ data: filterDemoProducts(filters), source: "demo" });
-    }
-
-    return NextResponse.json({ data: result.rows, source: "database" });
-  } catch (error) {
-    console.error("Database error:", error);
-    // Fall back to demo data on error
-    return NextResponse.json({ data: filterDemoProducts(filters), source: "demo" });
-  }
 }

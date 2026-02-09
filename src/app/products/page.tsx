@@ -1,111 +1,29 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/products/ProductCard";
-import { SearchInput, Select, Badge } from "@/components/ui";
-import { CATEGORY_GROUPS, Category, Product, Price } from "@/types";
-import { getCategoryLabel } from "@/lib/utils";
-import { Filter, Grid, List, SlidersHorizontal } from "lucide-react";
+import { CATEGORY_GROUPS, Category, Product, Price, Retailer } from "@/types";
+import { getCategoryLabel, getRetailerLabel, formatPrice } from "@/lib/utils";
+import {
+  Search,
+  SlidersHorizontal,
+  X,
+  ChevronDown,
+  Store,
+  Package,
+  Loader2,
+  RefreshCw
+} from "lucide-react";
 
-// Demo products for UI display (will be replaced with Supabase data)
-const demoProducts: (Product & { prices: Price[]; lowest_price: Price | null })[] = [
-  {
-    id: "1",
-    name: "AMD Ryzen 9 7950X 16-Core Processor",
-    brand: "AMD",
-    model: "7950X",
-    category: "cpu",
-    image_url: null,
-    specs: { cores: 16, threads: 32, base_clock: 4500, boost_clock: 5700, socket: "AM5", tdp: 170 },
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    prices: [
-      { id: "p1", product_id: "1", retailer: "amazon_sa", price: 2299, currency: "SAR", url: "#", in_stock: true, last_checked: new Date().toISOString() },
-      { id: "p2", product_id: "1", retailer: "jarir", price: 2399, currency: "SAR", url: "#", in_stock: true, last_checked: new Date().toISOString() },
-    ],
-    lowest_price: { id: "p1", product_id: "1", retailer: "amazon_sa", price: 2299, currency: "SAR", url: "#", in_stock: true, last_checked: new Date().toISOString() },
-  },
-  {
-    id: "2",
-    name: "NVIDIA GeForce RTX 4090 Founders Edition",
-    brand: "NVIDIA",
-    model: "RTX 4090",
-    category: "gpu",
-    image_url: null,
-    specs: { vram: 24, vram_type: "GDDR6X", cuda_cores: 16384, tdp: 450, length_mm: 336 },
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    prices: [
-      { id: "p3", product_id: "2", retailer: "amazon_sa", price: 7499, currency: "SAR", url: "#", in_stock: true, last_checked: new Date().toISOString() },
-      { id: "p4", product_id: "2", retailer: "newegg", price: 7299, currency: "SAR", url: "#", in_stock: false, last_checked: new Date().toISOString() },
-    ],
-    lowest_price: { id: "p3", product_id: "2", retailer: "amazon_sa", price: 7499, currency: "SAR", url: "#", in_stock: true, last_checked: new Date().toISOString() },
-  },
-  {
-    id: "3",
-    name: "Samsung Odyssey G9 49\" Curved Gaming Monitor",
-    brand: "Samsung",
-    model: "Odyssey G9",
-    category: "monitor",
-    image_url: null,
-    specs: { screen_size: 49, resolution: "5120x1440", refresh_rate: 240, panel_type: "VA", curved: true, response_time: 1 },
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    prices: [
-      { id: "p5", product_id: "3", retailer: "amazon_sa", price: 4999, currency: "SAR", url: "#", in_stock: true, last_checked: new Date().toISOString() },
-    ],
-    lowest_price: { id: "p5", product_id: "3", retailer: "amazon_sa", price: 4999, currency: "SAR", url: "#", in_stock: true, last_checked: new Date().toISOString() },
-  },
-  {
-    id: "4",
-    name: "PlayStation 5 Console",
-    brand: "Sony",
-    model: "PS5",
-    category: "console",
-    image_url: null,
-    specs: { console_generation: "9th", console_storage: 825, max_resolution: "4K", max_fps: 120 },
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    prices: [
-      { id: "p6", product_id: "4", retailer: "jarir", price: 2099, currency: "SAR", url: "#", in_stock: true, last_checked: new Date().toISOString() },
-      { id: "p7", product_id: "4", retailer: "amazon_sa", price: 2199, currency: "SAR", url: "#", in_stock: true, last_checked: new Date().toISOString() },
-    ],
-    lowest_price: { id: "p6", product_id: "4", retailer: "jarir", price: 2099, currency: "SAR", url: "#", in_stock: true, last_checked: new Date().toISOString() },
-  },
-  {
-    id: "5",
-    name: "Logitech G Pro X Superlight Wireless Mouse",
-    brand: "Logitech",
-    model: "G Pro X Superlight",
-    category: "mouse",
-    image_url: null,
-    specs: { dpi: 25600, sensor: "HERO 25K", weight: 63, wireless: true, polling_rate: 1000 },
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    prices: [
-      { id: "p8", product_id: "5", retailer: "amazon_sa", price: 549, currency: "SAR", url: "#", in_stock: true, last_checked: new Date().toISOString() },
-    ],
-    lowest_price: { id: "p8", product_id: "5", retailer: "amazon_sa", price: 549, currency: "SAR", url: "#", in_stock: true, last_checked: new Date().toISOString() },
-  },
-  {
-    id: "6",
-    name: "SteelSeries Arctis Nova Pro Wireless Headset",
-    brand: "SteelSeries",
-    model: "Arctis Nova Pro",
-    category: "headset",
-    image_url: null,
-    specs: { driver_size: 40, wireless: true, noise_cancelling: true, battery_life: 44, microphone: true },
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    prices: [
-      { id: "p9", product_id: "6", retailer: "amazon_sa", price: 1399, currency: "SAR", url: "#", in_stock: true, last_checked: new Date().toISOString() },
-    ],
-    lowest_price: { id: "p9", product_id: "6", retailer: "amazon_sa", price: 1399, currency: "SAR", url: "#", in_stock: true, last_checked: new Date().toISOString() },
-  },
-];
+interface ProductWithPrices extends Product {
+  prices: Price[];
+  lowest_price: Price | null;
+}
+
+const retailers: Retailer[] = ["amazon_sa", "jarir", "extra", "newegg", "pcd", "infiniarc"];
 
 const sortOptions = [
   { value: "price_asc", label: "Price: Low to High" },
@@ -115,162 +33,315 @@ const sortOptions = [
 ];
 
 export default function ProductsPage() {
+  const [products, setProducts] = useState<ProductWithPrices[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<Category | "all">("all");
+  const [selectedRetailer, setSelectedRetailer] = useState<Retailer | "all">("all");
   const [sortBy, setSortBy] = useState("price_asc");
   const [showFilters, setShowFilters] = useState(false);
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const [total, setTotal] = useState(0);
 
-  // Filter products
-  const filteredProducts = demoProducts.filter((product) => {
-    const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase()) ||
-      product.brand.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // Fetch products from API
+  const fetchProducts = async () => {
+    setLoading(true);
+    setError(null);
 
-  // Sort products
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    switch (sortBy) {
-      case "price_asc":
-        return (a.lowest_price?.price || 0) - (b.lowest_price?.price || 0);
-      case "price_desc":
-        return (b.lowest_price?.price || 0) - (a.lowest_price?.price || 0);
-      case "name":
-        return a.name.localeCompare(b.name);
-      default:
-        return 0;
+    try {
+      const params = new URLSearchParams();
+      if (selectedCategory !== "all") params.set("category", selectedCategory);
+      if (selectedRetailer !== "all") params.set("retailer", selectedRetailer);
+      if (search) params.set("search", search);
+      if (inStockOnly) params.set("inStock", "true");
+      params.set("sortBy", sortBy);
+      params.set("limit", "100");
+
+      const response = await fetch(`/api/products?${params.toString()}`);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch products");
+      }
+
+      const data = await response.json();
+      setProducts(data.products || []);
+      setTotal(data.pagination?.total || 0);
+    } catch (err) {
+      console.error("Error fetching products:", err);
+      setError("Failed to load products. Please try again.");
+    } finally {
+      setLoading(false);
     }
-  });
+  };
 
-  // Get all categories as flat array
-  const allCategories = Object.values(CATEGORY_GROUPS).flat();
+  // Fetch on mount and when filters change
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      fetchProducts();
+    }, 300);
+
+    return () => clearTimeout(debounce);
+  }, [selectedCategory, selectedRetailer, sortBy, inStockOnly, search]);
+
+  const allCategories = Object.values(CATEGORY_GROUPS).flat() as Category[];
+
+  const clearFilters = () => {
+    setSearch("");
+    setSelectedCategory("all");
+    setSelectedRetailer("all");
+    setInStockOnly(false);
+  };
+
+  const hasActiveFilters = search || selectedCategory !== "all" || selectedRetailer !== "all" || inStockOnly;
 
   return (
     <main className="min-h-screen bg-black text-white">
-      <div className="fixed inset-0 bg-grid opacity-30" />
+      {/* Background */}
+      <div className="chrome-waves">
+        <div className="chrome-wave chrome-wave-1" style={{ opacity: 0.3 }} />
+        <div className="chrome-wave chrome-wave-2" style={{ opacity: 0.2 }} />
+      </div>
+      <div className="fixed inset-0 bg-grid opacity-20 pointer-events-none" />
+
       <Header />
 
-      <div className="relative pt-32 pb-20 px-6">
+      <div className="relative pt-28 pb-20 px-4 md:px-6">
         <div className="max-w-7xl mx-auto">
           {/* Page Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-12"
+            className="mb-8"
           >
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Products</h1>
-            <p className="text-white/60 text-lg">
-              Browse thousands of PC parts, peripherals, and gaming gear with real-time prices
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+              <span className="gradient-text-static">Products</span>
+            </h1>
+            <p className="text-white/50 text-lg">
+              Compare prices across {retailers.length} Saudi retailers • {total.toLocaleString()} products
             </p>
           </motion.div>
 
-          {/* Search & Filters */}
+          {/* Search & Filters Bar */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="glass rounded-2xl p-6 mb-8"
+            className="glass-chrome rounded-2xl p-4 md:p-6 mb-6"
           >
             <div className="flex flex-col lg:flex-row gap-4">
               {/* Search */}
-              <div className="flex-1">
-                <SearchInput
-                  placeholder="Search products..."
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                <input
+                  type="text"
+                  placeholder="Search products, brands..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:border-white/20 transition-colors"
                 />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded"
+                  >
+                    <X className="w-4 h-4 text-white/40" />
+                  </button>
+                )}
               </div>
 
               {/* Sort */}
-              <div className="w-full lg:w-48">
-                <Select
-                  options={sortOptions}
+              <div className="relative min-w-[200px]">
+                <select
                   value={sortBy}
-                  onChange={setSortBy}
-                  placeholder="Sort by"
-                />
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="w-full px-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white appearance-none cursor-pointer focus:outline-none focus:border-white/20 transition-colors"
+                >
+                  {sortOptions.map(opt => (
+                    <option key={opt.value} value={opt.value} className="bg-black">
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 pointer-events-none" />
               </div>
 
-              {/* Filter Toggle */}
+              {/* Refresh */}
+              <button
+                onClick={fetchProducts}
+                disabled={loading}
+                className="flex items-center justify-center gap-2 px-4 py-3.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+
+              {/* Filter Toggle (Mobile) */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 px-4 py-3 glass rounded-xl hover:bg-white/10 transition-colors lg:hidden"
+                className="lg:hidden flex items-center justify-center gap-2 px-4 py-3.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors"
               >
                 <SlidersHorizontal className="w-5 h-5" />
-                Filters
+                <span>Filters</span>
+                {hasActiveFilters && (
+                  <span className="w-2 h-2 rounded-full bg-white" />
+                )}
               </button>
             </div>
 
-            {/* Category Filters */}
-            <div className={`mt-6 ${showFilters ? "block" : "hidden lg:block"}`}>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setSelectedCategory("all")}
-                  className={`px-4 py-2 rounded-xl text-sm transition-colors ${
-                    selectedCategory === "all"
-                      ? "bg-white text-black"
-                      : "bg-white/10 text-white/70 hover:bg-white/20"
-                  }`}
-                >
-                  All
-                </button>
-                {Object.entries(CATEGORY_GROUPS).map(([group, categories]) => (
-                  <div key={group} className="flex flex-wrap gap-2">
-                    <span className="hidden lg:flex items-center text-white/30 text-sm px-2">|</span>
-                    {categories.map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat as Category)}
-                        className={`px-4 py-2 rounded-xl text-sm transition-colors ${
-                          selectedCategory === cat
-                            ? "bg-white text-black"
-                            : "bg-white/10 text-white/70 hover:bg-white/20"
+            {/* Filters Row */}
+            <div className={`mt-4 pt-4 border-t border-white/5 ${showFilters ? "block" : "hidden lg:block"}`}>
+              <div className="flex flex-wrap gap-3">
+                {/* Category Pills */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedCategory("all")}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedCategory === "all"
+                        ? "bg-white text-black"
+                        : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                      }`}
+                  >
+                    All
+                  </button>
+                  {["gpu", "cpu", "monitor", "mouse", "keyboard", "headset", "console", "ram", "storage"].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat as Category)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedCategory === cat
+                          ? "bg-white text-black"
+                          : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
                         }`}
-                      >
-                        {getCategoryLabel(cat)}
-                      </button>
+                    >
+                      {getCategoryLabel(cat)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Divider */}
+                <div className="hidden lg:block w-px h-8 bg-white/10 self-center" />
+
+                {/* Store Filter */}
+                <div className="relative">
+                  <select
+                    value={selectedRetailer}
+                    onChange={(e) => setSelectedRetailer(e.target.value as Retailer | "all")}
+                    className="px-4 py-2 pr-10 bg-white/5 border border-white/10 rounded-xl text-sm text-white/70 appearance-none cursor-pointer focus:outline-none focus:border-white/20"
+                  >
+                    <option value="all" className="bg-black">All Stores</option>
+                    {retailers.map(r => (
+                      <option key={r} value={r} className="bg-black">{getRetailerLabel(r)}</option>
                     ))}
-                  </div>
-                ))}
+                  </select>
+                  <Store className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
+                </div>
+
+                {/* In Stock Toggle */}
+                <button
+                  onClick={() => setInStockOnly(!inStockOnly)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${inStockOnly
+                      ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                      : "bg-white/5 text-white/60 hover:bg-white/10"
+                    }`}
+                >
+                  <Package className="w-4 h-4" />
+                  In Stock Only
+                </button>
+
+                {/* Clear Filters */}
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="px-4 py-2 rounded-xl text-sm text-white/40 hover:text-white/60 transition-colors"
+                  >
+                    Clear all
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>
 
           {/* Results Count */}
-          <div className="mb-6 text-white/50">
-            Showing {sortedProducts.length} products
-          </div>
-
-          {/* Products Grid */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+            className="mb-6 flex items-center justify-between"
           >
-            {sortedProducts.map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * (index % 8) }}
-              >
-                <ProductCard
-                  product={product}
-                  lowestPrice={product.lowest_price}
-                  prices={product.prices}
-                />
-              </motion.div>
-            ))}
+            <div className="text-white/40">
+              {loading ? "Loading..." : `${products.length} product${products.length !== 1 ? "s" : ""} found`}
+            </div>
           </motion.div>
 
-          {/* Empty State */}
-          {sortedProducts.length === 0 && (
-            <div className="text-center py-20">
-              <div className="text-6xl mb-4">🔍</div>
-              <h3 className="text-xl font-semibold mb-2">No products found</h3>
-              <p className="text-white/50">Try adjusting your search or filters</p>
+          {/* Loading State */}
+          {loading && products.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="w-12 h-12 text-white/30 animate-spin mb-4" />
+              <p className="text-white/40">Loading products...</p>
             </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="text-center py-20">
+              <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6">
+                <X className="w-10 h-10 text-red-400" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3 text-red-400">{error}</h3>
+              <button
+                onClick={fetchProducts}
+                className="px-6 py-3 bg-white/10 rounded-xl hover:bg-white/15 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {/* Products Grid */}
+          {!loading && !error && products.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+            >
+              {products.map((product, index) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(0.03 * index, 0.3) }}
+                >
+                  <ProductCard
+                    product={product}
+                    lowestPrice={product.lowest_price}
+                    prices={product.prices}
+                    showDiscount={!!product.lowest_price?.original_price}
+                    originalPrice={product.lowest_price?.original_price || undefined}
+                  />
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+
+          {/* Empty State */}
+          {!loading && !error && products.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-20"
+            >
+              <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6">
+                <Search className="w-10 h-10 text-white/20" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">No products found</h3>
+              <p className="text-white/40 mb-6">Try adjusting your search or filters</p>
+              <button
+                onClick={clearFilters}
+                className="px-6 py-3 bg-white/10 rounded-xl hover:bg-white/15 transition-colors"
+              >
+                Clear filters
+              </button>
+            </motion.div>
           )}
         </div>
       </div>

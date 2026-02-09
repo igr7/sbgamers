@@ -140,8 +140,8 @@ export default function BuilderPage() {
               {PC_BUILD_CATEGORIES.map((category, index) => {
                 const Icon = categoryIcons[category] || Box;
                 const selected = build[category];
-                const hasError = errors.some((e) => e.affected_parts.includes(category));
-                const hasWarning = warnings.some((w) => w.affected_parts.includes(category));
+                const hasError = errors.some((e) => e.affected_parts?.includes(category));
+                const hasWarning = warnings.some((w) => w.affected_parts?.includes(category));
 
                 return (
                   <motion.div

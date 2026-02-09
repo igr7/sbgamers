@@ -1,4 +1,4 @@
-// Database Types for SBGamers
+// Database Types for SBGamers - Complete Gaming Categories
 
 export type Category =
   // PC Components
@@ -10,6 +10,11 @@ export type Category =
   | "psu"
   | "case"
   | "cooler"
+  // Gaming Systems
+  | "gaming_laptop"
+  | "gaming_pc"
+  | "console"
+  | "console_accessory"
   // Displays
   | "monitor"
   | "tv"
@@ -21,16 +26,54 @@ export type Category =
   | "webcam"
   | "microphone"
   | "controller"
-  // Gaming Consoles
-  | "console"
-  | "console_accessory";
+  // Furniture & VR
+  | "gaming_chair"
+  | "vr_headset";
+
+export const CATEGORY_INFO: Record<Category, { name: string; nameAr: string; icon: string }> = {
+  cpu: { name: "Processors", nameAr: "معالجات", icon: "⚡" },
+  gpu: { name: "Graphics Cards", nameAr: "كروت شاشة", icon: "🎮" },
+  motherboard: { name: "Motherboards", nameAr: "لوحات أم", icon: "🔌" },
+  ram: { name: "Memory (RAM)", nameAr: "ذاكرة", icon: "💾" },
+  storage: { name: "Storage", nameAr: "تخزين", icon: "💿" },
+  psu: { name: "Power Supplies", nameAr: "مزودات طاقة", icon: "🔋" },
+  case: { name: "PC Cases", nameAr: "صناديق", icon: "🖥️" },
+  cooler: { name: "Cooling", nameAr: "تبريد", icon: "❄️" },
+  gaming_laptop: { name: "Gaming Laptops", nameAr: "لابتوبات قيمنق", icon: "💻" },
+  gaming_pc: { name: "Gaming PCs", nameAr: "كمبيوترات قيمنق", icon: "🖥️" },
+  console: { name: "Consoles", nameAr: "أجهزة ألعاب", icon: "🎮" },
+  console_accessory: { name: "Console Accessories", nameAr: "إكسسوارات", icon: "🎯" },
+  monitor: { name: "Gaming Monitors", nameAr: "شاشات قيمنق", icon: "🖥️" },
+  tv: { name: "TVs", nameAr: "تلفزيونات", icon: "📺" },
+  keyboard: { name: "Keyboards", nameAr: "كيبوردات", icon: "⌨️" },
+  mouse: { name: "Mice", nameAr: "ماوسات", icon: "🖱️" },
+  headset: { name: "Headsets", nameAr: "سماعات", icon: "🎧" },
+  mousepad: { name: "Mousepads", nameAr: "ماوس باد", icon: "🟫" },
+  webcam: { name: "Webcams", nameAr: "كاميرات", icon: "📷" },
+  microphone: { name: "Microphones", nameAr: "مايكروفونات", icon: "🎤" },
+  controller: { name: "Controllers", nameAr: "أذرع تحكم", icon: "🎮" },
+  gaming_chair: { name: "Gaming Chairs", nameAr: "كراسي قيمنق", icon: "🪑" },
+  vr_headset: { name: "VR Headsets", nameAr: "نظارات VR", icon: "🥽" },
+};
 
 export type Retailer =
   | "amazon_sa"
   | "amazon_ae"
   | "newegg"
   | "jarir"
-  | "softland";
+  | "extra"
+  | "pcd"
+  | "infiniarc";
+
+export const RETAILER_INFO: Record<Retailer, { name: string; url: string; logo?: string; color: string }> = {
+  amazon_sa: { name: "Amazon SA", url: "https://amazon.sa", color: "#FF9900" },
+  amazon_ae: { name: "Amazon AE", url: "https://amazon.ae", color: "#FF9900" },
+  newegg: { name: "Newegg", url: "https://newegg.com/global/sa-en", color: "#F7A500" },
+  jarir: { name: "Jarir", url: "https://jarir.com", color: "#D32F2F" },
+  extra: { name: "Extra", url: "https://extra.com", color: "#1976D2" },
+  pcd: { name: "PCD", url: "https://pcd.com.sa", color: "#4CAF50" },
+  infiniarc: { name: "Infiniarc", url: "https://infiniarc.com", color: "#9C27B0" },
+};
 
 export interface Product {
   id: string;
@@ -40,6 +83,8 @@ export interface Product {
   category: Category;
   image_url: string | null;
   specs: ProductSpecs;
+  rating?: number;
+  reviews_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -149,6 +194,27 @@ export interface ProductSpecs {
   digital_only?: boolean;
   max_resolution?: string;
   max_fps?: number;
+
+  // Gaming Laptop/PC specs
+  processor?: string;
+  graphics?: string;
+  display?: string;
+  ram_size?: number;
+  storage_size?: number;
+  battery?: string;
+  os?: string;
+
+  // Gaming Chair specs
+  max_weight?: number;
+  material?: string;
+  armrests?: string;
+  recline_angle?: number;
+
+  // VR Headset specs
+  display_type?: string;
+  field_of_view?: number;
+  tracking?: string;
+  controllers_included?: boolean;
 }
 
 export interface Price {
@@ -156,6 +222,7 @@ export interface Price {
   product_id: string;
   retailer: Retailer;
   price: number;
+  original_price?: number;
   currency: "SAR" | "AED" | "USD";
   url: string;
   in_stock: boolean;
@@ -164,82 +231,63 @@ export interface Price {
 
 export interface PriceHistory {
   id: string;
+  price_id?: string;
   product_id: string;
   retailer: Retailer;
   price: number;
-  currency: "SAR" | "AED" | "USD";
+  currency?: "SAR" | "AED" | "USD";
+  in_stock?: boolean;
   recorded_at: string;
 }
 
-export interface AlertSubscription {
+export interface Deal {
   id: string;
-  email: string;
-  product_id: string;
-  target_price: number | null;
-  alert_type: "price_drop" | "stock" | "target_price";
-  is_active: boolean;
-  created_at: string;
+  product: Product;
+  prices: Price[];
+  lowest_price: Price & { original_price?: number };
+  original_price: number;
+  sale_price: number;
+  discount_percent: number;
+  savings: number;
 }
 
-export interface CompatibilityRule {
-  id: string;
-  rule_type: string;
-  source_category: Category;
-  target_category: Category;
-  source_field: string;
-  target_field: string;
-  comparison: "equals" | "gte" | "lte" | "contains";
-  error_message: string;
-}
-
-// Build types
+// Build Item for PC Builder
 export interface BuildItem {
-  category: Category;
+  category?: Category;
   product: Product | null;
   price: Price | null;
 }
 
-export interface Build {
-  id?: string;
-  name: string;
-  items: Partial<Record<Category, BuildItem>>;
-  total_price: number;
-  compatibility_issues: CompatibilityIssue[];
-  created_at?: string;
-}
-
+// Compatibility Issue for PC Builder
 export interface CompatibilityIssue {
-  type: "error" | "warning";
-  message: string;
-  affected_parts: Category[];
-}
-
-// API Response types
-export interface ProductWithPrices extends Product {
-  prices: Price[];
-  lowest_price: Price | null;
-  price_history?: PriceHistory[];
-}
-
-export interface ProductFilters {
+  type: 'error' | 'warning' | 'info';
   category?: Category;
-  brand?: string;
-  min_price?: number;
-  max_price?: number;
-  in_stock?: boolean;
-  retailer?: Retailer;
-  search?: string;
-  sort_by?: "price_asc" | "price_desc" | "name" | "newest";
+  message: string;
+  affected_parts?: string[];
 }
 
-// Category groupings for UI
+// Category Groups for filtering
 export const CATEGORY_GROUPS = {
-  "PC Components": ["cpu", "gpu", "motherboard", "ram", "storage", "psu", "case", "cooler"],
-  "Displays": ["monitor", "tv"],
-  "Peripherals": ["keyboard", "mouse", "headset", "mousepad", "webcam", "microphone", "controller"],
-  "Gaming Consoles": ["console", "console_accessory"],
-} as const;
+  'PC Components': ['cpu', 'gpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler'] as Category[],
+  'Gaming Systems': ['gaming_laptop', 'gaming_pc', 'console', 'console_accessory'] as Category[],
+  'Displays': ['monitor', 'tv'] as Category[],
+  'Peripherals': ['keyboard', 'mouse', 'headset', 'mousepad', 'webcam', 'microphone', 'controller'] as Category[],
+  'Furniture & VR': ['gaming_chair', 'vr_headset'] as Category[],
+};
 
+// PC Build Categories (subset of all categories for PC building)
 export const PC_BUILD_CATEGORIES: Category[] = [
-  "cpu", "gpu", "motherboard", "ram", "storage", "psu", "case", "cooler"
+  'cpu',
+  'gpu',
+  'motherboard',
+  'ram',
+  'storage',
+  'psu',
+  'case',
+  'cooler',
 ];
+
+// Useful for filtering
+export const ALL_CATEGORIES = Object.keys(CATEGORY_INFO) as Category[];
+export const ALL_RETAILERS = Object.keys(RETAILER_INFO) as Retailer[];
+

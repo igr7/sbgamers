@@ -1,0 +1,61 @@
+﻿  Γû▓ Next.js 14.2.5
+  - Environments: .env.local
+
+npx : 
+At line:1 char:98
++ ... SilentlyContinue; 
+Start-Sleep -Seconds 1; npx 
+next build 2>&1 | Out-F ...
++                            
+                   
+~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (:String  
+  ) [], RemoteException
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+> Build error occurred
+Error: You cannot use 
+different slug names for the 
+same dynamic path ('id' !== 
+'slug').
+    at handleSlug (C:\Users\G
+r7\sbgamers\node_modules\next
+\dist\shared\lib\router\utils
+\sorted-routes.js:94:31)
+    at UrlNode._insert (C:\Us
+ers\Gr7\sbgamers\node_modules
+\next\dist\shared\lib\router\
+utils\sorted-routes.js:131:17
+)
+    at UrlNode._insert (C:\Us
+ers\Gr7\sbgamers\node_modules
+\next\dist\shared\lib\router\
+utils\sorted-routes.js:142:40
+)
+    at UrlNode.insert (C:\Use
+rs\Gr7\sbgamers\node_modules\
+next\dist\shared\lib\router\u
+tils\sorted-routes.js:13:14)
+    at C:\Users\Gr7\sbgamers\
+node_modules\next\dist\shared
+\lib\router\utils\sorted-rout
+es.js:165:46
+    at Array.forEach 
+(<anonymous>)
+    at getSortedRoutes (C:\Us
+ers\Gr7\sbgamers\node_modules
+\next\dist\shared\lib\router\
+utils\sorted-routes.js:165:21
+)
+    at C:\Users\Gr7\sbgamers\
+node_modules\next\dist\build\
+index.js:623:65
+    at Span.traceFn (C:\Users
+\Gr7\sbgamers\node_modules\ne
+xt\dist\trace\trace.js:147:20
+)
+    at C:\Users\Gr7\sbgamers\
+node_modules\next\dist\build\
+index.js:622:89
