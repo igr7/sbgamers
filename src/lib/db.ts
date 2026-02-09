@@ -9,9 +9,10 @@ const getPool = (): Pool | null => {
   }
   if (!pool) {
     try {
+      // CranL's PostgreSQL doesn't support SSL, so we disable it
       pool = new Pool({
         connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false },
+        ssl: false, // Disabled - CranL database doesn't support SSL
         connectionTimeoutMillis: 5000,
         idleTimeoutMillis: 30000,
         max: 10,
